@@ -32,7 +32,7 @@ RUNNER_ALLOW_RUNASROOT=1 ./config.sh \
 
 cleanup() {
     echo "Removing runner..."
-    ./config.sh remove --unattended --token ${REG_TOKEN}
+    RUNNER_ALLOW_RUNASROOT=1 ./config.sh remove --unattended --token ${REG_TOKEN}
 }
 
 trap 'cleanup; exit 130' INT
