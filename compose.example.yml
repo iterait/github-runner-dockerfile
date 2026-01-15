@@ -1,0 +1,14 @@
+services:
+  github-runner:
+    image: iterait/github-runner:2.331.0
+    restart: unless-stopped
+    environment:
+      REPOSITORY: iterait/github-runner-dockerfile  # use your own github repository
+      ACCESS_TOKEN: ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX  # use your own github personal access token
+      WORKER_NAME: my-runner-name
+      WORKER_LABELS: linux,X64,docker,self-hosted
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      mode: replicated
+      replicas: 4
