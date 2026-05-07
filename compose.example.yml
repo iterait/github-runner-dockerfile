@@ -1,6 +1,6 @@
 services:
   github-runner:
-    image: iterait/github-runner:2.331.0
+    image: iterait/github-runner:2.334.0
     restart: unless-stopped
     environment:
       REPOSITORY: iterait/github-runner-dockerfile  # use your own github repository

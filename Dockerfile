@@ -1,7 +1,7 @@
 FROM ubuntu:25.10
 
-ARG RUNNER_VERSION="2.331.0"
-ARG RUNNER_SHA256="5fcc01bd546ba5c3f1291c2803658ebd3cedb3836489eda3be357d41bfcf28a7"
+ARG RUNNER_VERSION="2.334.0"
+ARG RUNNER_SHA256="048024cd2c848eb6f14d5646d56c13a4def2ae7ee3ad12122bee960c56f3d271"
 
 RUN apt update -y && \
     apt install -y ca-certificates curl gnupg lsb-release && \
