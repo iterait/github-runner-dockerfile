@@ -1,0 +1,92 @@
+name: Docker image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: iterait/github-runner
+
+jobs:
+  lint:
+    runs-on: [self-hosted, x64, linux, docker-support]
+    timeout-minutes: 15
+    container:
+      image: hadolint/hadolint:v2.15.1-debian
+    steps:
+      - name: Clear workdir
+        run: rm -rfv "${{ github.workspace }}/github-runner-lint-workdir"
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          path: github-runner-lint-workdir
+      - name: Install shellcheck
+        run: apt-get update && apt-get -y install --no-install-recommends shellcheck
+      - name: Lint Dockerfile
+        working-directory: ./github-runner-lint-workdir
+        run: hadolint Dockerfile  # picks up .hadolint.yaml from the working directory
+      - name: Lint start.sh
+        working-directory: ./github-runner-lint-workdir
+        run: shellcheck start.sh
+
+  docker:
+    runs-on: [self-hosted, x64, linux]
+    timeout-minutes: 60
+    steps:
+      - name: Clear workdir
+        run: rm -rfv "${{ github.workspace }}/github-runner-image-build"
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          path: github-runner-image-build
+      - name: Read runner version from Dockerfile
+        id: version
+        working-directory: ./github-runner-image-build
+        run: |
+          version=$(sed -nE 's/^ARG RUNNER_VERSION="?([^"]+)"?$/\1/p' Dockerfile)
+          if [ -z "$version" ]; then
+            echo "::error::Could not parse RUNNER_VERSION from Dockerfile"
+            exit 1
+          fi
+          echo "runner=$version" >> "$GITHUB_OUTPUT"
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver: docker
+      - name: Docker image meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          # The image is built into the host docker daemon, so PR builds must not
+          # get the release tags (they would shadow the released image on the host).
+          tags: |
+            type=raw,value=${{ steps.version.outputs.runner }},enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=pr
+            type=sha
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: ./github-runner-image-build
+          no-cache: true
+          pull: true
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
