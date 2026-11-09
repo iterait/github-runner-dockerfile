@@ -1,0 +1,2 @@
+ignored:
+  - DL3008  # pinning apt package versions breaks builds whenever ubuntu updates them
